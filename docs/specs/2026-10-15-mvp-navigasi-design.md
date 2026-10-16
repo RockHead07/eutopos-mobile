@@ -26,13 +26,15 @@ dilaporkan, termasuk yang gagal. Galat posisi dan arah saat navigasi dicatat unt
 pose VPS dengan ARCore (4-DoF), rute pada graf titik terukur, tampilan AR dan denah mini, log
 evaluasi, panel uji tersembunyi, dua tambahan kecil di server.
 
-**Tidak masuk (spesifikasi terpisah nanti):** avatar 3D, suara, RAG, multi-lantai dan barometer,
+**Tidak masuk (spesifikasi terpisah nanti):** aplikasi capture (peta lantai 10 dibuat dari video
+kamera bawaan lewat dashboard web), avatar 3D, suara, RAG, multi-lantai dan barometer,
 NavMesh, anchoring tool untuk POI, pembuatan graf otomatis, distribusi aplikasi ke pengguna umum.
 
 ## 3. Keputusan
 
 | Keputusan | Pilihan | Alasan |
 |---|---|---|
+| Bentuk aplikasi | Aplikasi navigasi adalah satu build Unity (APK Android native lewat IL2CPP, UI uGUI), tanpa host Flutter, UaaL, atau WebView. Aplikasi capture (eutopos Mapper) tetap aplikasi terpisah, build kedua dari project yang sama, di luar MVP (`eutopos-vps/docs/specs/2026-09-29-capture-and-map-pipeline-design.md` bagian 9 dan 10.2) | Tidak ada aplikasi tuan rumah (beda dengan DARSI yang menempel ke MyRSIy); layar MVP sedikit dan cukup dengan uGUI; satu build dan satu bahasa. Kotlin + ARCore SDK ditolak karena rute AR harus dirender sendiri dan avatar nanti tetap butuh Unity. Hybrid dipertimbangkan ulang hanya bila muncul banyak layar 2D non-AR atau aplikasi harus masuk ke aplikasi instansi |
 | Tampilan | AR + denah mini | Tujuan 6 PA (ARCore); denah mini untuk demo dan debug |
 | Penyatuan pose | 4-DoF (geser XYZ, putar yaw) | Kemiringan dari ARCore (Y searah gravitasi); galat pitch/roll VPS tidak memiringkan rute |
 | Geometri rute | Graf titik terukur + A* | Titik meteran sudah dalam kerangka gedung; tanpa denah dan tanpa bake Unity |
@@ -261,6 +263,9 @@ eutopos-mobile/
 
 Unity 6000.3.14f1 (sama dengan DARSI), AR Foundation dan ARCore XR Plugin 6.3.x, Input System, uGUI.
 Tanpa MultiSet, Photon, AI Navigation, dan avatar.
+
+`Scripts/Core` memegang peran folder `Shared` di rancangan 29 September: tanpa ketergantungan Unity,
+sehingga aplikasi capture nanti bisa memakainya tanpa bergantung pada `Scripts/App` (navigasi).
 
 **Dari DARSI:** hampir tidak ada berkas yang disalin. Navigasi DARSI terikat ke SDK MultiSet dan
 material jalurnya berasal dari sampel MultiSet, sehingga tidak boleh disalin. Yang diambil hanya
