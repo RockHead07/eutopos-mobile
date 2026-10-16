@@ -1,0 +1,14 @@
+{
+  "name": "Eutopos.Editor",
+  "rootNamespace": "Eutopos.EditorTools",
+  "references": ["Unity.XR.Management", "Unity.XR.Management.Editor", "Unity.XR.ARCore.Editor", "Unity.XR.ARFoundation"],
+  "includePlatforms": ["Editor"],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
