@@ -18,3 +18,4 @@ TestResults*.xml
 *.local.json
 *.local.json.meta
 device-logs/
+.utmp/
