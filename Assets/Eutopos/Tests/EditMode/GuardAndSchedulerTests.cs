@@ -82,5 +82,19 @@ namespace Eutopos.Core.Tests
             Assert.That(s.ShouldFireTimer(100f), Is.False);
             Assert.That(s.TryStart(100f), Is.True);
         }
+
+        [Test]
+        public void HaltedTimerComesBackAfterResumeWithoutLeavingNavigation()
+        {
+            // 401/503 di tengah navigasi: timer diam, tombol tetap jalan; koreksi berhasil menyalakan timer lagi.
+            var s = new CorrectionScheduler { Navigating = true, Tracking = true };
+            s.Halt();
+            Assert.That(s.ShouldFireTimer(100f), Is.False);
+            Assert.That(s.TryStart(100f), Is.True);
+            s.Finish();
+            s.Resume();
+            Assert.That(s.Navigating, Is.True);
+            Assert.That(s.ShouldFireTimer(105f), Is.True);
+        }
     }
 }

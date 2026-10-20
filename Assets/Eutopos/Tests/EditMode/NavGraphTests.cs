@@ -82,6 +82,15 @@ namespace Eutopos.Core.Tests
         }
 
         [Test]
+        public void HasEdgeIsSymmetric()
+        {
+            var g = NavGraph.Parse(Good);
+            Assert.That(g.HasEdge("P01", "P02") && g.HasEdge("P02", "P01"), Is.True);
+            Assert.That(g.HasEdge("P01", "P03"), Is.False);
+            Assert.That(g.HasEdge("P01", "P99"), Is.False);
+        }
+
+        [Test]
         public void ArrivalUsesAStrictRadius()
         {
             Assert.That(NavGraph.Arrived(new Vector2(0.99f, 0), Vector2.Zero), Is.True);

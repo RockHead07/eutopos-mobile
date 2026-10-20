@@ -31,6 +31,12 @@ namespace Eutopos.App
 
             ui.MiniMap = new GameObject("MiniMap", typeof(RawImage)).GetComponent<RawImage>();
             Place(ui.MiniMap.rectTransform, canvas, new Vector2(0.6f, 0.62f), new Vector2(0.98f, 0.88f));
+            bool mapBig = false; // ketuk denah untuk membesarkan atau mengecilkan (spesifikasi bagian 10)
+            ui.MiniMap.gameObject.AddComponent<Button>().onClick.AddListener(() =>
+            {
+                mapBig = !mapBig;
+                Place(ui.MiniMap.rectTransform, canvas, mapBig ? new Vector2(0.04f, 0.3f) : new Vector2(0.6f, 0.62f), new Vector2(mapBig ? 0.96f : 0.98f, 0.88f));
+            });
 
             var bannerPanel = Panel(canvas, new Vector2(0.05f, 0.44f), new Vector2(0.95f, 0.56f), new Color(0.1f, 0.4f, 0.2f, 0.85f));
             ui.Banner = Label(bannerPanel, "", 40, TextAnchor.MiddleCenter, Vector2.zero, Vector2.one);

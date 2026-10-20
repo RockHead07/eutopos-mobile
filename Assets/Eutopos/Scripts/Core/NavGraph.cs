@@ -168,6 +168,8 @@ namespace Eutopos.Core
             return new Route(points, ids);
         }
 
+        public bool HasEdge(string a, string b) => adj.TryGetValue(a, out var n) && n.Contains(b);
+
         public static bool Arrived(Vector2 user, Vector2 target, float radiusM = 1.0f) =>
             Vector2.Distance(user, target) < radiusM;
     }

@@ -24,6 +24,16 @@ namespace Eutopos.Core.Tests
         }
 
         [Test]
+        public void OnlyAnswersThatRetryingCannotFixStopTheTimer()
+        {
+            // 401/403 dan 503 tidak pulih dengan mengulang tiap 5 detik (spesifikasi bagian 9).
+            Assert.That(VpsResponses.StopsTimer(VpsStatus.Unauthorized), Is.True);
+            Assert.That(VpsResponses.StopsTimer(VpsStatus.NoMap), Is.True);
+            foreach (var s in new[] { VpsStatus.Ok, VpsStatus.Failed, VpsStatus.NotAligned, VpsStatus.NetworkError, VpsStatus.ServerError })
+                Assert.That(VpsResponses.StopsTimer(s), Is.False, s.ToString());
+        }
+
+        [Test]
         public void FewInliersOrFailedStatusIsFailed()
         {
             Assert.That(VpsResponses.ClassifyLocalize(200, Ok.Replace("120", "49"), false).Status, Is.EqualTo(VpsStatus.Failed));
@@ -53,6 +63,30 @@ namespace Eutopos.Core.Tests
             Assert.That(VpsResponses.ClassifyLocalize(0, null, true).Status, Is.EqualTo(VpsStatus.NetworkError));
             Assert.That(VpsResponses.ClassifyLocalize(500, "boom", false).Status, Is.EqualTo(VpsStatus.ServerError));
             Assert.That(VpsResponses.ClassifyLocalize(200, "<html>", false).Status, Is.EqualTo(VpsStatus.ServerError));
+        }
+
+        // Cloudflare menjawab 5xx dengan halaman HTML saat server di belakang terowongan mati (530 = Error 1033)
+        [TestCase(502)]
+        [TestCase(504)]
+        [TestCase(522)]
+        [TestCase(530)]
+        public void UnreachableServerBehindCloudflareIsANetworkError(long code)
+        {
+            const string page = "<!doctype html>\n<html class=\"no-js\"><title>Cloudflare Tunnel error</title></html>";
+            var l = VpsResponses.ClassifyLocalize(code, page, false);
+            var g = VpsResponses.ParseNavGraph(code, page, false);
+            Assert.That((l.Status, g.Status), Is.EqualTo((VpsStatus.NetworkError, VpsStatus.NetworkError)));
+            StringAssert.DoesNotContain("<", l.Detail);
+            StringAssert.DoesNotContain("<", g.Detail);
+        }
+
+        [Test]
+        public void HtmlBodiesNeverReachTheDetailShownOnScreen()
+        {
+            var r = VpsResponses.ClassifyLocalize(500, "<html><body>Internal Server Error</body></html>", false);
+            Assert.That(r.Status, Is.EqualTo(VpsStatus.ServerError));
+            StringAssert.DoesNotContain("<", r.Detail);
+            StringAssert.Contains("500", r.Detail);
         }
 
         // jawaban 200 yang rusak tidak boleh melempar: pelempar mematikan coroutine dan scheduler macet

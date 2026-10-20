@@ -56,7 +56,7 @@ namespace Eutopos.App
                 ["jump_m"] = guard.JumpThresholdM,
                 ["config_error"] = configError,
             });
-            if (vps.Config != null) StartCoroutine(vps.FetchNavGraph(OnNavGraph)); // OnNavGraph: Task 9
+            EnsureNavGraph();
         }
 
         void OnDestroy() => log?.Dispose();
@@ -78,7 +78,11 @@ namespace Eutopos.App
             UpdateStatus(now);
         }
 
-        public void OnLocalizePressed() => StartCorrection("button");
+        public void OnLocalizePressed()
+        {
+            EnsureNavGraph(); // server mungkin baru hidup lagi setelah aplikasi dibuka
+            StartCorrection("button");
+        }
 
         void StartCorrection(string trigger)
         {
@@ -139,7 +143,6 @@ namespace Eutopos.App
                     entry["reason"] = "no_map";
                     break;
                 case VpsStatus.Unauthorized:
-                    scheduler.Navigating = false;
                     lastMessage = "Token akses tidak ada atau salah";
                     entry["decision"] = "rejected";
                     entry["reason"] = "unauthorized";
@@ -155,11 +158,14 @@ namespace Eutopos.App
                     entry["reason"] = "server_error";
                     break;
             }
+            // Timer diam; tombol Lokalisasi tetap aktif sebagai jalan pulih (peta diterbitkan, token diganti), lalu HandleOk menyalakannya lagi.
+            if (VpsResponses.StopsTimer(r.Status)) scheduler.Halt();
             log.Write("correction", entry);
         }
 
         void HandleOk(CapturedFrame frame, LocalizeResult r, JObject entry)
         {
+            scheduler.Resume(); // server menjawab ok: token benar dan peta ada, apa pun keputusan atas koreksi ini
             // Spesifikasi bagian 9: setelah pelacakan hilang, tunggu koreksi dari frame BARU.
             if (frame.CapturedAtS < lastTrackingLostT)
             {
