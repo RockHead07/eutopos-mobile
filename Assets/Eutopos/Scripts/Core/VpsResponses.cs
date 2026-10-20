@@ -36,16 +36,27 @@ namespace Eutopos.Core
 
         public static string Number(float v) => v.ToString("R", CultureInfo.InvariantCulture);
 
+        /// <summary>Jawaban yang tidak pulih dengan mengulang: token salah, atau layanan belum punya peta.</summary>
+        public static bool StopsTimer(VpsStatus s) => s == VpsStatus.Unauthorized || s == VpsStatus.NoMap;
+
         /// <summary>Status yang sama untuk semua endpoint. Cloudflare Access mengalihkan ke halaman login (3xx).</summary>
         static VpsStatus? Common(long code, bool connectionError)
         {
             if (code >= 300 && code < 400 || code == 401 || code == 403) return VpsStatus.Unauthorized;
             if (connectionError && code == 0) return VpsStatus.NetworkError;
+            // Cloudflare tidak menjangkau server di belakang terowongan (530 = Error 1033): sama dengan jaringan putus
+            if (code == 502 || code == 504 || (code >= 520 && code <= 530)) return VpsStatus.NetworkError;
             if (code == 503) return VpsStatus.NoMap;
             return null;
         }
 
-        static string Short(string s) => s == null ? "" : (s.Length > 200 ? s.Substring(0, 200) : s);
+        /// <summary>Teks untuk layar dan log: halaman HTML (Cloudflare, proxy) tidak pernah ditampilkan mentah.</summary>
+        static string Short(string s)
+        {
+            if (s == null) return "";
+            if (s.TrimStart().StartsWith("<")) return "(halaman HTML)";
+            return s.Length > 200 ? s.Substring(0, 200) : s;
+        }
 
         public static LocalizeResult ClassifyLocalize(long httpCode, string body, bool connectionError)
         {

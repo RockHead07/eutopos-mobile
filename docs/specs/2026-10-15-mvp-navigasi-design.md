@@ -166,10 +166,9 @@ tidak ada; 503 bila tidak ada peta aktif. Tanpa identitas pengguna, sama seperti
 - Berkas rusak ditolak dengan pesan yang menyebut kesalahannya; tidak ada penyalinan sebagian.
 - `align.json` terikat pada satu versi peta. Peta yang dibangun ulang kembali "belum diselaraskan"
   sampai diselaraskan lagi.
-- Layanan membaca `align.json` saat memuat peta, sehingga perintah mencetak pengingat: bila versi
-  itu sedang aktif, muat ulang layanan dengan `docker compose restart api` (dashboard tidak punya
-  tombol Publish untuk versi yang sudah aktif); bila belum aktif, `align.json` ikut dimuat saat
-  versi itu diterbitkan.
+- Layanan memeriksa `align.json` di setiap permintaan dan memakai berkas baru tanpa restart, juga
+  untuk versi yang sedang aktif (perubahan 2026-10-17; sebelumnya perlu `docker compose restart api`).
+  Berkas rusak tidak menggantikan penyelarasan terakhir yang sah.
 
 **c. Service token (dikerjakan Bagus di Cloudflare).** Buat service token `eutopos-mobile` di
 Zero Trust, tambahkan kebijakan *Service Auth* untuk token itu pada aplikasi Access `eutopos`.
