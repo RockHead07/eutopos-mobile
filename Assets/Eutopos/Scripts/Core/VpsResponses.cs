@@ -24,7 +24,8 @@ namespace Eutopos.Core
     public sealed class NavGraphResult
     {
         public VpsStatus Status;
-        public NavGraph Graph;
+        public WalkableGrid Nav;
+        public string Revision;
         public string AreaId;
         public int? MapVersion;
         public string Detail;
@@ -101,10 +102,16 @@ namespace Eutopos.Core
             try
             {
                 var j = JObject.Parse(body);
+                // server lama atau area yang belum menerbitkan walkable: target nonaktif, bukan galat
+                var walkToken = j["walkable"];
+                if (walkToken == null || walkToken.Type == JTokenType.Null)
+                    return new NavGraphResult { Status = VpsStatus.NotFound, Detail = "walkable belum diterbitkan" };
+                if (!(walkToken is JObject walk)) throw new FormatException("walkable bukan objek");
                 return new NavGraphResult
                 {
                     Status = VpsStatus.Ok,
-                    Graph = NavGraph.Parse(j["graph"].ToString(Formatting.None)),
+                    Nav = WalkableGrid.Parse(walk.ToString(Formatting.None)),
+                    Revision = (string)j["revision"],
                     AreaId = (string)j["area_id"],
                     MapVersion = (int?)j["map_version"],
                 };

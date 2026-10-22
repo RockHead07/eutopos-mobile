@@ -103,10 +103,11 @@ namespace Eutopos.Core.Tests
             Assert.That(VpsResponses.ClassifyLocalize(200, body, false).Status, Is.EqualTo(VpsStatus.ServerError));
         }
 
-        [TestCase(@"{""area_id"":""a"",""graph"":{""frame"":""building"",""units"":""m"",""nodes"":[1],""edges"":[],""targets"":[]}}")]
-        [TestCase(@"{""area_id"":""a"",""graph"":{""frame"":""building"",""units"":""m"",""nodes"":[{""id"":""A"",""x"":0,""y"":0}],""edges"":[],""targets"":[""A""]}}")]
-        [TestCase(@"{""area_id"":""a"",""graph"":{""frame"":{}}}")]
-        [TestCase(@"{""area_id"":""a""}")]
+        const string Walk = @"{""frame"":""building"",""units"":""m"",""cell_m"":1.0,""origin"":[0,0],""width"":2,""height"":1,""bits"":""Aw=="",""targets"":[{""id"":""R1"",""name"":""Lab"",""x"":1.5,""y"":0.5}]}";
+
+        [TestCase(@"{""area_id"":""a"",""walkable"":[]}")]
+        [TestCase(@"{""area_id"":""a"",""walkable"":{""frame"":""x""}}")]
+        [TestCase(@"{""area_id"":""a"",""walkable"":{""frame"":""building"",""units"":""m"",""cell_m"":1.0,""origin"":[0,0],""width"":40,""height"":1,""bits"":""Aw=="",""targets"":[]}}")]
         [TestCase(null)]
         public void MalformedNavGraphBodyIsAServerError(string body)
         {
@@ -116,12 +117,15 @@ namespace Eutopos.Core.Tests
         [Test]
         public void NavGraphOutcomes()
         {
-            const string graph = @"{""frame"":""building"",""units"":""m"",""nodes"":[{""id"":""A"",""x"":0,""y"":0},{""id"":""B"",""x"":1,""y"":0}],""edges"":[[""A"",""B""]],""targets"":[{""node"":""B"",""name"":""Lab""}]}";
-            var ok = VpsResponses.ParseNavGraph(200, @"{""area_id"":""floor10"",""map_version"":4,""graph"":" + graph + "}", false);
+            var ok = VpsResponses.ParseNavGraph(200, @"{""area_id"":""floor10"",""map_version"":4,""revision"":""r1"",""walkable"":" + Walk + "}", false);
             Assert.That(ok.Status, Is.EqualTo(VpsStatus.Ok));
-            Assert.That(ok.Graph.Targets[0].Name, Is.EqualTo("Lab"));
+            Assert.That(ok.Nav.Targets[0].Name, Is.EqualTo("Lab"));
+            Assert.That((ok.Revision, ok.AreaId, ok.MapVersion), Is.EqualTo(("r1", "floor10", (int?)4)));
             Assert.That(VpsResponses.ParseNavGraph(404, "{}", false).Status, Is.EqualTo(VpsStatus.NotFound));
-            var broken = VpsResponses.ParseNavGraph(200, @"{""area_id"":""a"",""map_version"":1,""graph"":{""frame"":""x""}}", false);
+            // server lama atau area tanpa terbitan walkable: tidak ada walkable, target nonaktif
+            var old = VpsResponses.ParseNavGraph(200, @"{""area_id"":""a"",""map_version"":1,""graph"":{""frame"":""building""}}", false);
+            Assert.That(old.Status, Is.EqualTo(VpsStatus.NotFound));
+            var broken = VpsResponses.ParseNavGraph(200, @"{""area_id"":""a"",""map_version"":1,""walkable"":{""frame"":""x""}}", false);
             Assert.That(broken.Status, Is.EqualTo(VpsStatus.ServerError));
             StringAssert.Contains("frame", broken.Detail);
         }

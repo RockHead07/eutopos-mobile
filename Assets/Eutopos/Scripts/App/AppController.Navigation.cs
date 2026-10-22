@@ -8,8 +8,10 @@ namespace Eutopos.App
     public sealed partial class AppController
     {
         RouteView routeView;
+        PoiPin poiPin;
         MiniMap miniMap;
-        NavGraph graph;
+        WalkableGrid nav;
+        string navRevision;
         Route route;
         int targetIndex = -1;
         bool navigating;
@@ -20,16 +22,21 @@ namespace Eutopos.App
         void AwakeNavigation(Transform root)
         {
             routeView = root.gameObject.AddComponent<RouteView>();
+            poiPin = root.gameObject.AddComponent<PoiPin>();
+            poiPin.Init(arCamera);
             miniMap = new MiniMap(ui.MiniMap);
             RefreshTargetLabel();
         }
 
         bool fetchingGraph;
 
-        /// <summary>Ambil graf bila belum ada dan tidak sedang diambil (saat mulai dan tiap tombol Lokalisasi).</summary>
-        void EnsureNavGraph()
+        /// <summary>
+        /// Ambil graf saat belum ada, dan (refresh) tiap tombol Lokalisasi untuk melihat terbitan baru dari dashboard.
+        /// Tidak diambil saat navigasi berjalan; penggantiannya diputuskan NavRefresh setelah jawaban datang.
+        /// </summary>
+        void EnsureNavGraph(bool refresh = false)
         {
-            if (graph != null || fetchingGraph || vps.Config == null) return;
+            if (fetchingGraph || vps.Config == null || navigating || (nav != null && !refresh)) return;
             fetchingGraph = true;
             StartCoroutine(vps.FetchNavGraph(OnNavGraph));
         }
@@ -37,12 +44,21 @@ namespace Eutopos.App
         void OnNavGraph(NavGraphResult r)
         {
             fetchingGraph = false;
-            log.Write("navgraph", new JObject { ["status"] = r.Status.ToString(), ["detail"] = r.Detail, ["map_version"] = r.MapVersion });
+            log.Write("navgraph", new JObject { ["status"] = r.Status.ToString(), ["detail"] = r.Detail, ["map_version"] = r.MapVersion, ["revision"] = r.Revision });
             if (r.Status == VpsStatus.Ok)
             {
-                graph = r.Graph;
-                targetIndex = graph.Targets.Count > 0 ? 0 : -1;
+                if (nav == null || NavRefresh.ShouldReplace(navRevision, r.Revision, navigating))
+                {
+                    // pertahankan target yang sedang dipilih menurut id bila masih ada di terbitan baru
+                    string keep = nav != null && targetIndex >= 0 ? nav.Targets[targetIndex].Id : null;
+                    nav = r.Nav;
+                    navRevision = r.Revision;
+                    targetIndex = nav.Targets.Count > 0 ? 0 : -1;
+                    for (int i = 0; keep != null && i < nav.Targets.Count; i++)
+                        if (nav.Targets[i].Id == keep) targetIndex = i;
+                }
             }
+            else if (nav != null) { /* graf yang sudah ada tetap dipakai; jangan menimpa pesan dengan galat jaringan */ }
             else if (r.Status == VpsStatus.NotFound) lastMessage = "Graf rute belum dipasang; target nonaktif";
             else if (r.Status == VpsStatus.Unauthorized) lastMessage = "Token akses tidak ada atau salah";
             else if (r.Status == VpsStatus.NetworkError) lastMessage = "Server tidak terjangkau; graf rute dicoba lagi saat Lokalisasi";
@@ -52,22 +68,22 @@ namespace Eutopos.App
 
         public void CycleTarget(int step)
         {
-            if (graph == null || graph.Targets.Count == 0 || navigating) return;
-            targetIndex = (targetIndex + step + graph.Targets.Count) % graph.Targets.Count;
+            if (nav == null || nav.Targets.Count == 0 || navigating) return;
+            targetIndex = (targetIndex + step + nav.Targets.Count) % nav.Targets.Count;
             RefreshTargetLabel();
         }
 
         void RefreshTargetLabel()
         {
-            bool has = graph != null && targetIndex >= 0;
-            ui.TargetLabel.text = has ? "Target: " + graph.Targets[targetIndex].Name : "Target: -";
+            bool has = nav != null && targetIndex >= 0;
+            ui.TargetLabel.text = has ? "Target: " + nav.Targets[targetIndex].Name : "Target: -";
             ui.PrevTarget.interactable = ui.NextTarget.interactable = ui.NavButton.interactable = has;
         }
 
         public void OnNavPressed()
         {
             if (navigating) { StopNavigation("berhenti"); return; }
-            if (graph == null || targetIndex < 0) return;
+            if (nav == null || targetIndex < 0) return;
             if (!rootCtl.HasAlignment || needsRelocalize) { lastMessage = "Tekan Lokalisasi dulu"; return; }
             navigating = true;
             scheduler.Navigating = true;
@@ -98,22 +114,22 @@ namespace Eutopos.App
         {
             if (!rootCtl.TryUserPoseB(arCamera.transform, out var posB, out _)) return;
             var user = Conv.FloorG(posB);
-            var target = graph.Targets[targetIndex];
-            route = graph.Plan(user, target.Node);
+            var target = nav.Targets[targetIndex];
+            route = nav.Plan(user, target.Position);
             lastPlanPos = user;
             if (route == null)
             {
                 routeView.Clear();
                 lastMessage = "Target tidak terjangkau dari posisi ini";
-                log.Write("route", new JObject { ["target"] = target.Node, ["reachable"] = false });
+                log.Write("route", new JObject { ["target"] = target.Id, ["reachable"] = false });
                 return;
             }
             routeView.Show(route);
             log.Write("route", new JObject
             {
-                ["target"] = target.Node,
+                ["target"] = target.Id,
                 ["reachable"] = true,
-                ["nodes"] = new JArray(route.NodeIds),
+                ["waypoints"] = route.Points.Count,
                 ["length_m"] = route.LengthM,
             });
         }
@@ -125,15 +141,15 @@ namespace Eutopos.App
             if (navigating && user.HasValue && !needsRelocalize)
             {
                 if (NumV2.Distance(user.Value, lastPlanPos) > 1f) Replan();
-                var target = graph.Targets[targetIndex];
-                var goal = graph.Nodes[target.Node];
-                if (NavGraph.Arrived(user.Value, goal))
+                var target = nav.Targets[targetIndex];
+                var goal = target.Position;
+                if (WalkableGrid.Arrived(user.Value, goal))
                 {
                     float d = NumV2.Distance(user.Value, goal);
                     ui.ShowBanner($"Sampai di {target.Name} ({d:0.00} m menurut aplikasi)");
                     log.Write("arrival", new JObject
                     {
-                        ["target"] = target.Node,
+                        ["target"] = target.Id,
                         ["app_distance_m"] = d,
                         ["duration_s"] = now - navStartT,
                         ["corrections_accepted"] = acceptedCount - acceptedAtStart,
@@ -142,10 +158,17 @@ namespace Eutopos.App
                 }
             }
             if (navigating && needsRelocalize) routeView.Clear();
+            // pin POI: hanya untuk target yang dipilih dan hanya setelah sesi AR dilokalisasi (posisi tidak valid sebelumnya)
+            if (nav != null && targetIndex >= 0 && hasPose && rootCtl.HasAlignment && !needsRelocalize)
+            {
+                var t = nav.Targets[targetIndex];
+                poiPin.Show(t, NumV2.Distance(user.Value, t.Position));
+            }
+            else poiPin.Hide();
             if (now - lastMiniMapT >= 0.2f)
             {
                 lastMiniMapT = now;
-                miniMap.Draw(graph, route, user, yawB);
+                miniMap.Draw(nav, route, user, yawB);
             }
         }
 
@@ -176,17 +199,15 @@ namespace Eutopos.App
 
         public void CyclePoint(int step)
         {
-            if (graph == null) return;
-            pointIndex = (pointIndex + step + graph.Nodes.Count) % graph.Nodes.Count;
+            if (nav == null || nav.Targets.Count == 0) return;
+            pointIndex = (pointIndex + step + nav.Targets.Count) % nav.Targets.Count;
             RefreshDebug();
         }
 
         string SelectedPoint()
         {
-            if (graph == null) return null;
-            int i = 0;
-            foreach (var id in graph.Nodes.Keys) { if (i++ == pointIndex) return id; }
-            return null;
+            if (nav == null || nav.Targets.Count == 0) return null;
+            return nav.Targets[pointIndex % nav.Targets.Count].Name;
         }
 
         public void ExportLog()
@@ -204,7 +225,7 @@ namespace Eutopos.App
                 return;
             }
             var app = Conv.FloorG(posB);
-            var truth = graph.Nodes[id];
+            var truth = nav.Targets[pointIndex % nav.Targets.Count].Position;
             float err = NumV2.Distance(app, truth);
             log.Write("ground_truth", new JObject
             {

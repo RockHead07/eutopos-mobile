@@ -6,7 +6,7 @@ using NumV2 = System.Numerics.Vector2;
 
 namespace Eutopos.App
 {
-    /// <summary>Denah 2D di kerangka G: sisi abu, rute biru, pengguna merah dengan garis arah.</summary>
+    /// <summary>Denah 2D di kerangka G: area walkable abu, target jingga, rute biru, pengguna merah dengan garis arah.</summary>
     public sealed class MiniMap
     {
         const int Size = 256, Margin = 16;
@@ -21,25 +21,41 @@ namespace Eutopos.App
             target.texture = tex;
         }
 
-        public void Draw(NavGraph graph, Route route, NumV2? userG, float yawB)
+        WalkableGrid boundsFor;
+        float minX, minY, span;
+
+        void FitTo(WalkableGrid nav)
+        {
+            // kotak pembatas sel walkable (grid punya margin kosong 3 satuan di sekelilingnya)
+            int c0 = nav.Width, c1 = -1, r0 = nav.Height, r1 = -1;
+            for (int r = 0; r < nav.Height; r++)
+                for (int c = 0; c < nav.Width; c++)
+                    if (nav.IsWalkable(c, r)) { c0 = Math.Min(c0, c); c1 = Math.Max(c1, c); r0 = Math.Min(r0, r); r1 = Math.Max(r1, r); }
+            if (c1 < 0) { c0 = 0; c1 = nav.Width - 1; r0 = 0; r1 = nav.Height - 1; }
+            minX = nav.Origin.X + c0 * nav.CellM;
+            minY = nav.Origin.Y + r0 * nav.CellM;
+            span = Math.Max(Math.Max((c1 - c0 + 1) * nav.CellM, (r1 - r0 + 1) * nav.CellM), 1f);
+            boundsFor = nav;
+        }
+
+        public void Draw(WalkableGrid nav, Route route, NumV2? userG, float yawB)
         {
             tex.SetPixels32(clear);
-            if (graph != null)
+            if (nav != null)
             {
-                float minX = float.MaxValue, minY = float.MaxValue, maxX = float.MinValue, maxY = float.MinValue;
-                foreach (var p in graph.Nodes.Values)
-                {
-                    minX = Math.Min(minX, p.X); maxX = Math.Max(maxX, p.X);
-                    minY = Math.Min(minY, p.Y); maxY = Math.Max(maxY, p.Y);
-                }
-                float span = Math.Max(Math.Max(maxX - minX, maxY - minY), 1f);
+                if (boundsFor != nav) FitTo(nav);
                 float scale = (Size - 2 * Margin) / span;
                 Vector2Int Px(NumV2 p) => new Vector2Int(Margin + (int)((p.X - minX) * scale), Margin + (int)((p.Y - minY) * scale));
 
-                foreach (var a in graph.Nodes)
-                    foreach (var b in graph.Nodes)
-                        if (string.CompareOrdinal(a.Key, b.Key) < 0 && Connected(graph, a.Key, b.Key))
-                            Line(Px(a.Value), Px(b.Value), new Color32(160, 160, 160, 255));
+                // latar: sel walkable per piksel
+                for (int py = Margin; py < Size - Margin; py++)
+                    for (int px = Margin; px < Size - Margin; px++)
+                    {
+                        float gx = minX + (px - Margin) / scale, gy = minY + (py - Margin) / scale;
+                        int col = (int)Math.Floor((gx - nav.Origin.X) / nav.CellM), row = (int)Math.Floor((gy - nav.Origin.Y) / nav.CellM);
+                        if (nav.IsWalkable(col, row)) tex.SetPixel(px, py, new Color32(110, 110, 110, 200));
+                    }
+                foreach (var t in nav.Targets) Dot(Px(t.Position), 3, new Color32(224, 122, 46, 255));
                 if (route != null)
                     for (int i = 1; i < route.Points.Count; i++)
                         Line(Px(route.Points[i - 1]), Px(route.Points[i]), new Color32(60, 120, 230, 255));
@@ -58,8 +74,6 @@ namespace Eutopos.App
             }
             tex.Apply();
         }
-
-        static bool Connected(NavGraph g, string a, string b) => g.HasEdge(a, b);
 
         void Line(Vector2Int a, Vector2Int b, Color32 c)
         {
