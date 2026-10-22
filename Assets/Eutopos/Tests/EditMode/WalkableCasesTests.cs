@@ -80,6 +80,30 @@ namespace Eutopos.Core.Tests
             Assert.Throws<FormatException>(() => WalkableGrid.Parse("{}"));
         }
 
+        // Muatan walkable persis seperti yang dikirim server (eutopos-vps tests/fixtures/walkable_payload.json, dibandingkan
+        // dengan keluaran encode() di sisi server). Dulu server tidak mengirim frame dan units, jadi aplikasi menolak graf
+        // dan target kosong; tes dengan JSON buatan sendiri tidak menangkapnya.
+        static string PayloadText() =>
+            File.ReadAllText(Path.Combine(UnityEngine.Application.dataPath, "Eutopos/Tests/EditMode/walkable_payload.json"));
+
+        [Test]
+        public void ThePayloadTheServerPublishesParses()
+        {
+            var g = WalkableGrid.Parse(PayloadText());
+            Assert.That((g.Width, g.Height), Is.EqualTo((3, 2)));
+            Assert.That(g.IsWalkable(0, 0) && g.IsWalkable(1, 1) && !g.IsWalkable(2, 1), Is.True);
+            Assert.That((g.Targets[0].Id, g.Targets[0].Name, g.Targets[0].Position), Is.EqualTo(("R1", "Lab", new Vector2(0.5f, 0.5f))));
+        }
+
+        [Test]
+        public void ANavgraphResponseCarryingThatPayloadIsOk()
+        {
+            var body = @"{""area_id"":""a"",""map_version"":1,""revision"":""r1"",""walkable"":" + PayloadText() + "}";
+            var r = VpsResponses.ParseNavGraph(200, body, false);
+            Assert.That(r.Status, Is.EqualTo(VpsStatus.Ok), r.Detail);
+            Assert.That(r.Nav.Targets[0].Name, Is.EqualTo("Lab"));
+        }
+
         [Test]
         public void ArrivedUsesTheRadius()
         {
