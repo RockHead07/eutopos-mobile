@@ -80,7 +80,7 @@ namespace Eutopos.App
 
         public void OnLocalizePressed()
         {
-            EnsureNavGraph(); // server mungkin baru hidup lagi setelah aplikasi dibuka
+            EnsureNavGraph(refresh: true); // server mungkin baru hidup lagi, atau dashboard baru menerbitkan rute
             StartCorrection("button");
         }
 
