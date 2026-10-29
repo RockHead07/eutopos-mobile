@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Numerics;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -19,6 +20,8 @@ namespace Eutopos.Core
         public int? MapVersion;
         public IReadOnlyDictionary<string, float> TimingsS = new Dictionary<string, float>();
         public string Detail;
+        /// <summary>Versi kontrak server (docs/contract.md di eutopos-vps); 0 dari server lama tanpa bidang ini.</summary>
+        public int ContractVersion;
     }
 
     public sealed class NavGraphResult
@@ -29,6 +32,7 @@ namespace Eutopos.Core
         public string AreaId;
         public int? MapVersion;
         public string Detail;
+        public int ContractVersion;
     }
 
     public static class VpsResponses
@@ -65,15 +69,32 @@ namespace Eutopos.Core
             if (common != null) return new LocalizeResult { Status = common.Value, Detail = Short(body) };
             if (httpCode != 200) return new LocalizeResult { Status = VpsStatus.ServerError, Detail = $"HTTP {httpCode}: {Short(body)}" };
             // batas kepercayaan: jawaban apa pun tidak boleh melempar ke pemanggil (coroutine mati, scheduler macet)
-            try { return ParseLocalize(JObject.Parse(body)); }
+            try { return ParseLocalize(ParseJson(body)); }
             catch (JsonReaderException) { return new LocalizeResult { Status = VpsStatus.ServerError, Detail = "jawaban bukan JSON" }; }
             catch (Exception e) { return new LocalizeResult { Status = VpsStatus.ServerError, Detail = "jawaban rusak: " + e.Message }; }
+        }
+
+        /// <summary>
+        /// Seperti JObject.Parse, tetapi string berformat tanggal (revision) tetap string. Tanpa ini Newtonsoft
+        /// mengubahnya menjadi DateTime dan (string) mengembalikan tanggal berformat budaya setempat.
+        /// </summary>
+        static JObject ParseJson(string body)
+        {
+            using (var reader = new JsonTextReader(new StringReader(body)) { DateParseHandling = DateParseHandling.None })
+            {
+                var j = JObject.Load(reader);
+                while (reader.Read())
+                    if (reader.TokenType != JsonToken.Comment)
+                        throw new JsonReaderException("teks tambahan setelah JSON");
+                return j;
+            }
         }
 
         static LocalizeResult ParseLocalize(JObject j)
         {
             var r = new LocalizeResult
             {
+                ContractVersion = (int?)j["contract_version"] ?? 0,
                 Inliers = (int?)j["inliers"] ?? 0,
                 AreaId = (string)j["area_id"],
                 MapVersion = (int?)j["map_version"],
@@ -101,7 +122,7 @@ namespace Eutopos.Core
             if (httpCode != 200) return new NavGraphResult { Status = VpsStatus.ServerError, Detail = $"HTTP {httpCode}: {Short(body)}" };
             try
             {
-                var j = JObject.Parse(body);
+                var j = ParseJson(body);
                 // server lama atau area yang belum menerbitkan walkable: target nonaktif, bukan galat
                 var walkToken = j["walkable"];
                 if (walkToken == null || walkToken.Type == JTokenType.Null)
@@ -114,6 +135,7 @@ namespace Eutopos.Core
                     Revision = (string)j["revision"],
                     AreaId = (string)j["area_id"],
                     MapVersion = (int?)j["map_version"],
+                    ContractVersion = (int?)j["contract_version"] ?? 0,
                 };
             }
             catch (Exception e)
