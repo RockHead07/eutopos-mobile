@@ -1,0 +1,15 @@
+{
+  "name": "Eutopos.Spike",
+  "rootNamespace": "Eutopos.Spike",
+  "references": [
+    "Eutopos.App",
+    "Eutopos.Core",
+    "Unity.InputSystem",
+    "Unity.XR.ARFoundation",
+    "Unity.XR.ARSubsystems",
+    "UnityEngine.UI"
+  ],
+  "overrideReferences": true,
+  "precompiledReferences": ["Newtonsoft.Json.dll"],
+  "autoReferenced": false
+}

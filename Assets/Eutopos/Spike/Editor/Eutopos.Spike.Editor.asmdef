@@ -1,0 +1,7 @@
+{
+  "name": "Eutopos.Spike.Editor",
+  "rootNamespace": "Eutopos.Spike.Editor",
+  "references": ["Eutopos.Spike", "Unity.XR.ARFoundation"],
+  "includePlatforms": ["Editor"],
+  "autoReferenced": false
+}
