@@ -13,6 +13,7 @@ namespace Eutopos.App
         public Intrinsics K;           // sudah diputar tegak dan diskalakan ke ukuran JPEG
         public UnityEngine.Vector3 CamPosU;
         public UnityEngine.Vector3 CamFwdU;
+        public UnityEngine.Quaternion CamRotU;
         public long TimestampNs;
         public float CapturedAtS;      // Time.realtimeSinceStartup saat frame diambil
     }
@@ -78,6 +79,7 @@ namespace Eutopos.App
             frame = null;
             var camPos = ArCamera.transform.position;
             var camFwd = ArCamera.transform.forward;
+            var camRot = ArCamera.transform.rotation;
             if (!CameraManager.TryGetIntrinsics(out var intr)) return "intrinsik kamera tidak tersedia";
             if (!CameraManager.TryAcquireLatestCpuImage(out var image)) return "gambar kamera tidak tersedia";
             try
@@ -101,6 +103,7 @@ namespace Eutopos.App
                     frame = new CapturedFrame
                     {
                         Jpeg = jpeg, K = k, CamPosU = camPos, CamFwdU = camFwd,
+                        CamRotU = camRot,
                         TimestampNs = args.timestampNs ?? 0, CapturedAtS = Time.realtimeSinceStartup,
                     };
                     return null;

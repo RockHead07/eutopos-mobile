@@ -1,0 +1,17 @@
+{
+  "name": "Eutopos.Spike.Tests",
+  "rootNamespace": "Eutopos.Spike.Tests",
+  "references": [
+    "Eutopos.Spike",
+    "Eutopos.App",
+    "Eutopos.Core",
+    "Unity.XR.ARSubsystems",
+    "UnityEngine.TestRunner",
+    "UnityEditor.TestRunner"
+  ],
+  "includePlatforms": ["Editor"],
+  "overrideReferences": true,
+  "precompiledReferences": ["nunit.framework.dll", "Newtonsoft.Json.dll"],
+  "autoReferenced": false,
+  "defineConstraints": ["UNITY_INCLUDE_TESTS"]
+}
