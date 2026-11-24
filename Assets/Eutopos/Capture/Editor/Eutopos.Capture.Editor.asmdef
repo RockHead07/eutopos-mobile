@@ -1,0 +1,7 @@
+{
+  "name": "Eutopos.Capture.Editor",
+  "rootNamespace": "Eutopos.Capture.EditorTools",
+  "references": ["Eutopos.Capture", "Eutopos.App", "Unity.XR.ARFoundation", "UnityEngine.UI", "Unity.InputSystem"],
+  "includePlatforms": ["Editor"],
+  "autoReferenced": false
+}
