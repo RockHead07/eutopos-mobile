@@ -17,5 +17,8 @@ mono_crash*
 TestResults*.xml
 *.local.json
 *.local.json.meta
+# Ikon aplikasi pribadi per perangkat pengembang (bisa berupa foto berhak cipta), tidak masuk repo publik.
+Assets/Eutopos/Icon/
+Assets/Eutopos/Icon.meta
 device-logs/
 .utmp/

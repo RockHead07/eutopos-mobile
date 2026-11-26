@@ -15,3 +15,10 @@ Status: MVP satu lantai dalam pengembangan. Spesifikasi: `docs/specs/2026-10-15-
 ## Lisensi
 
 Copyright (C) 2026 Bagus Insan Pradana. GNU Affero General Public License v3.0, lihat `LICENSE`.
+
+### Aset pihak ketiga
+
+- Model penunjuk tujuan `Assets/Eutopos/Models/MapPointer/`: "Map Pointer (3D Icon)" oleh Alexander
+  (https://sketchfab.com/pravdin), sumber https://sketchfab.com/3d-models/map-pointer-3d-icon-a30e2619537a425d90618ae5901c2989,
+  lisensi CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Diubah: warna diterapkan lewat material
+  Unity sendiri, ukuran dan arah diatur saat ditampilkan. Rincian di `Assets/Eutopos/Models/MapPointer/LICENSE-ASSETS.md`.
