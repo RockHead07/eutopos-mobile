@@ -1,0 +1,17 @@
+{
+  "name": "Eutopos.Capture",
+  "rootNamespace": "Eutopos.Capture",
+  "references": [
+    "Eutopos.Core",
+    "Eutopos.App",
+    "Unity.XR.ARFoundation",
+    "Unity.XR.ARSubsystems",
+    "Unity.XR.CoreUtils",
+    "UnityEngine.UI",
+    "Unity.InputSystem"
+  ],
+  "overrideReferences": true,
+  "precompiledReferences": ["Newtonsoft.Json.dll"],
+  "autoReferenced": false,
+  "defineConstraints": ["UNITY_EDITOR || EUTOPOS_CAPTURE"]
+}
